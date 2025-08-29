@@ -41,7 +41,10 @@ class LoadTestConfig:
     password: str = None
     duration_seconds: int = 60
     queries: List[QueryConfig] = None
-    index_pattern: str = "big5*"  # Default index pattern
+    index_pattern: str = "custom-big5*"  # Default index pattern
+    # Warmup configuration
+    warmup_enabled: bool = False
+    warmup_duration_seconds: int = 600  # 10 minutes default
     # Metrics export configuration
     metrics_host: str = None
     metrics_port: int = 9200
@@ -54,7 +57,13 @@ class LoadTestConfig:
             'hosts': [{'host': self.host, 'port': self.port}],
             'use_ssl': self.use_ssl,
             'verify_certs': False,
-            'ssl_show_warn': False
+            'ssl_show_warn': False,
+            'ssl_assert_hostname': False,
+            'ssl_assert_fingerprint': False,
+            'timeout': 300,
+            'max_retries': 0,
+            'maxsize': 10,   # Smaller pool per client since each thread has its own
+            'block': False   # Don't block when pool is full
         }
         if self.username and self.password:
             config['http_auth'] = (self.username, self.password)
@@ -72,7 +81,13 @@ class LoadTestConfig:
             'hosts': [{'host': host, 'port': port}],
             'use_ssl': use_ssl,
             'verify_certs': False,
-            'ssl_show_warn': False
+            'ssl_show_warn': False,
+            'ssl_assert_hostname': False,
+            'ssl_assert_fingerprint': False,
+            'timeout': 300,
+            'max_retries': 0,
+            'maxsize': 10,   # Smaller pool for metrics client
+            'block': False
         }
         if username and password:
             config['http_auth'] = (username, password)

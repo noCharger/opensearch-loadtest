@@ -3,7 +3,8 @@ import json
 import time
 import threading
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from opensearchpy import OpenSearch
 
 @dataclass
 class WALEntry:
@@ -15,7 +16,7 @@ class WALEntry:
     error: str = None
 
 class WALLogger:
-    def __init__(self, execution_id: str, log_dir: str = "logs"):
+    def __init__(self, execution_id: str, log_dir: str = "logs", metrics_client: Optional[OpenSearch] = None):
         self.execution_id = execution_id
         self.log_dir = log_dir
         self.locks = {}
@@ -30,18 +31,24 @@ class WALLogger:
         return self.locks[query_name]
     
     def log(self, query_name: str, event_type: str, duration: float = None, error: str = None):
-        entry = WALEntry(
-            timestamp=time.time(),
-            execution_id=self.execution_id,
-            query_name=query_name,
-            event_type=event_type,
-            duration=duration,
-            error=error
-        )
-        
-        log_file = self._get_log_file(query_name)
-        lock = self._get_lock(query_name)
-        
-        with lock:
-            with open(log_file, 'a') as f:
-                f.write(json.dumps(entry.__dict__) + '\n')
+        # Only log execution events, not individual query events
+        if query_name == 'EXECUTION':
+            entry = WALEntry(
+                timestamp=time.time(),
+                execution_id=self.execution_id,
+                query_name=query_name,
+                event_type=event_type,
+                duration=duration,
+                error=error
+            )
+            
+            log_file = self._get_log_file(query_name)
+            lock = self._get_lock(query_name)
+            
+            with lock:
+                with open(log_file, 'a') as f:
+                    f.write(json.dumps(entry.__dict__) + '\n')
+    
+    def flush_pending_metrics(self):
+        """Placeholder for compatibility - no longer needed"""
+        pass

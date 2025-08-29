@@ -1,0 +1,81 @@
+[
+  {
+    "name": "match-all",
+    "operation-type": "search",
+    "index": "big5",
+    "body": {
+      "query": {
+        "match_all": {}
+      }
+    }
+  },
+  {
+    "name": "term",
+    "operation-type": "search",
+    "index": "big5",
+    "request-timeout": 7200,
+    "body": {
+      "query": {
+        "term": {
+          "log.file.path": {
+            "value": "/var/log/messages/birdknight"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "range-numeric",
+    "operation-type": "search",
+    "index": "big5",
+    "body": {
+      "query": {
+        "range": {
+          "metrics.size": {
+            "gte": 20,
+            "lte": 200
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "desc_sort_timestamp",
+    "operation-type": "search",
+    "index": "big5",
+    "body": {
+      "query": {
+        "match_all": {}
+      },
+      "sort": [
+        {"@timestamp": "desc"}
+      ]
+    }
+  },
+  {
+    "name": "composite-terms",
+    "operation-type": "search",
+    "index": "big5",
+    "body": {
+      "size": 0,
+      "query": {
+        "range": {
+          "@timestamp": {
+            "gte": "2023-01-02T00:00:00",
+            "lt": "2023-01-02T10:00:00"
+          }
+        }
+      },
+      "aggs": {
+        "logs": {
+          "composite": {
+            "sources": [
+              {"process_name": {"terms": {"field": "process.name", "order": "desc"}}},
+              {"cloud_region": {"terms": {"field": "cloud.region", "order": "asc"}}}
+            ]
+          }
+        }
+      }
+    }
+  }
+]

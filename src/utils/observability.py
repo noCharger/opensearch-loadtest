@@ -9,9 +9,10 @@ class ObservabilityMonitor:
         self.query_counters = defaultdict(lambda: {"success": 0, "error": 0})
         self.concurrent_requests = defaultdict(int)
         self.group_concurrent_requests = defaultdict(int)
+        self.max_concurrency = 0
+        self.per_query_max_concurrency = defaultdict(int)  # Track max concurrency per query
         self.lock = threading.Lock()
         self.running = False
-        self._load_paused = False
     
     def start_monitoring(self):
         self.running = True
@@ -33,6 +34,15 @@ class ObservabilityMonitor:
             self.concurrent_requests[query_name] += 1
             if query_group:
                 self.group_concurrent_requests[query_group] += 1
+            # Update max concurrency with current total
+            total_concurrent = sum(self.concurrent_requests.values())
+            self.max_concurrency = max(self.max_concurrency, total_concurrent)
+            # Update per-query max concurrency
+            current_query_concurrency = self.concurrent_requests[query_name]
+            self.per_query_max_concurrency[query_name] = max(
+                self.per_query_max_concurrency[query_name], 
+                current_query_concurrency
+            )
     
     def end_request(self, query_name: str, query_group: QueryGroup = None):
         with self.lock:
@@ -58,7 +68,37 @@ class ObservabilityMonitor:
                     # Group concurrency summary
                     group_summary = " | ".join([f"{g.value}: {c}" for g, c in self.group_concurrent_requests.items() if c > 0])
                     
-                    status = " [PAUSED]" if hasattr(self, '_load_paused') and self._load_paused else ""
-                    print(f"[{elapsed:.0f}s] Requests: {total_requests} | Success: {success_rate:.1f}% | RPS: {current_rps:.1f} | Concurrent: {total_concurrent}{status}")
+                    avg_latency_ms = (elapsed / total_requests) * 1000 if total_requests > 0 else 0
+                    print(f"[{elapsed:.0f}s] Requests: {total_requests} | Success: {success_rate:.1f}% | RPS: {current_rps:.1f} | Concurrent: {total_concurrent} | Max: {self.max_concurrency} | Avg Latency: {avg_latency_ms:.1f}ms")
                     if group_summary:
                         print(f"[{elapsed:.0f}s] Group Concurrency: {group_summary}")
+    
+    def get_max_concurrency(self):
+        """Get current max concurrency value"""
+        with self.lock:
+            # Also update with current total to ensure accuracy
+            current_total = sum(self.concurrent_requests.values())
+            self.max_concurrency = max(self.max_concurrency, current_total)
+            return self.max_concurrency
+    
+    def get_query_max_concurrency(self, query_name: str):
+        """Get max concurrency for a specific query"""
+        with self.lock:
+            return self.per_query_max_concurrency.get(query_name, 0)
+    
+    def get_group_stats(self, group):
+        """Get statistics for a query group"""
+        with self.lock:
+            total_success = sum(self.query_counters[q]["success"] for q in self.query_counters if group.value in q)
+            total_error = sum(self.query_counters[q]["error"] for q in self.query_counters if group.value in q)
+            total_requests = total_success + total_error
+            
+            if total_requests == 0:
+                return None
+            
+            return {
+                'total_requests': total_requests,
+                'success_requests': total_success,
+                'error_requests': total_error,
+                'success_rate': (total_success / total_requests) * 100
+            }

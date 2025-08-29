@@ -45,7 +45,7 @@ class MetricsCollector:
                     "success": success,
                     "errors": errors,
                     "success_rate": success / total * 100,
-                    "avg_duration": avg_duration,
+                    "avg_duration_ms": avg_duration,  # Already in milliseconds
                     "rps": total / time_span if time_span > 0 else 0
                 }
             }
@@ -77,10 +77,10 @@ class MetricsCollector:
                     "success": q_success,
                     "errors": q_errors,
                     "success_rate": q_success / q_total * 100,
-                    "avg_duration": q_avg_duration,
-                    "min_duration": q_min_duration,
-                    "max_duration": q_max_duration,
-                    "p90_duration": q_p90_duration,
+                    "avg_duration_ms": q_avg_duration,  # Already in milliseconds
+                    "min_duration_ms": q_min_duration,
+                    "max_duration_ms": q_max_duration,
+                    "p90_duration_ms": q_p90_duration,
                     "rps": q_rps,
                     "avg_throughput": sum(throughput_windows) / len(throughput_windows) if throughput_windows else 0,
                     "min_throughput": min(throughput_windows) if throughput_windows else 0,

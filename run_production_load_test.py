@@ -57,6 +57,9 @@ def main():
     )
     
     print(f"\\nLoaded {len(queries)} queries across 5 groups")
+    print(f"Index pattern: {args.index}")
+    print(f"SSL: {args.ssl}")
+    print(f"Authentication: {'Yes' if args.username else 'No'}")
     print("Starting production load test...")
     
     # Run load test

@@ -40,15 +40,13 @@ class CPUMonitor:
                 with self.lock:
                     if cpu_percent > self.threshold and not self.is_paused:
                         self.is_paused = True
-                        print(f"\\n[CPU Monitor] CPU usage {cpu_percent:.1f}% > {self.threshold}% - PAUSING load generation")
                         if self.pause_callback:
-                            self.pause_callback()
+                            self.pause_callback(cpu_percent)
                     
-                    elif cpu_percent <= self.threshold - 5 and self.is_paused:  # 5% hysteresis
+                    elif cpu_percent <= self.threshold - 10 and self.is_paused:  # 10% hysteresis
                         self.is_paused = False
-                        print(f"\\n[CPU Monitor] CPU usage {cpu_percent:.1f}% - RESUMING load generation")
                         if self.resume_callback:
-                            self.resume_callback()
+                            self.resume_callback(cpu_percent)
                 
                 time.sleep(self.check_interval)
                 
