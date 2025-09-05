@@ -78,6 +78,9 @@
 - **Exponential Ramp**: Exponentially increase load for stress testing
 - **QPS Ramp**: Ramp up queries per second over time
 - **Concurrency Ramp**: Ramp up concurrent requests over time
+- **Single Group Exponential**: Focus exponential load on one query group (1→64 concurrent)
+- **Single Query Exponential**: Focus exponential load on one specific query (1→64 concurrent)
+- **Single Group Power-of-2 Ramp**: Focus power-of-2 load on one query group (1→2→4→8→16→32→64)
 
 ### Warmup Phase
 - **Automatic Warmup**: Run all queries at same concurrency before main test
@@ -99,6 +102,7 @@
 - **Load Profiles**: Conservative and moderate profiles matching actual usage patterns
 - **DSL Query Support**: Full production planning support for OpenSearch DSL queries
 - **Index Management**: Automatic index creation with mapping support
+- **Single Group/Query Testing**: Exponential ramp testing for individual query groups or queries
 
 ### Usage Examples
 
@@ -123,6 +127,9 @@ python run_mixed_load_test.py --host localhost --port 9200 --ppl-qps 1.0 --dsl-q
 
 # DSL queries with concurrent profile (exponential ramp)
 python run_dsl_load_test.py --host localhost --port 9200 --dsl-file queries/dsl_queries.json --profile concurrent --ramp-step 10 --duration 7200
+
+# Single DSL query exponential test (match-all only, 1->64 concurrent)
+python run_dsl_load_test.py --host localhost --port 9200 --dsl-file queries/dsl_queries.json --profile single_query_exponential --target-query match-all --duration 3600 --ramp-step 10
 
 # DSL queries with warmup phase
 python run_dsl_load_test.py --host localhost --port 9200 --dsl-file queries/dsl_queries.json --warmup --warmup-duration 600 --profile conservative
@@ -196,5 +203,50 @@ DSL queries are stored in JSON files using Rally-style format:
 - `index`: Target index pattern (supports template variables)
 - `body`: OpenSearch DSL query body
 - `request-timeout`: Optional timeout in seconds
+
+### PPL Load Test Setup
+
+PPL Load Test implements a step-by-step load testing approach that gradually introduces PPL queries to measure incremental performance impact.
+
+#### Test Configuration
+
+* 5 PPL Queries: composite_terms, desc_sort_timestamp, range, default, term
+* Progressive Steps: Each query starts at a different time step
+* Concurrency: 10 concurrent requests per active query
+* Duration: Configurable (default 25 minutes = 5 steps × 5 minutes each)
+
+#### Execution Pattern
+
+```
+Step 1 (0-5min):   composite_terms only                           (10 concurrent)
+Step 2 (5-10min):  composite_terms + desc_sort_timestamp          (20 concurrent) 
+Step 3 (10-15min): composite_terms + desc_sort_timestamp + range   (30 concurrent)
+Step 4 (15-20min): + default                                      (40 concurrent)
+Step 5 (20-25min): + term                                         (50 concurrent)
+```
+
+#### Optional Warmup
+
+* Warmup Phase: All queries run at 1 concurrency each for cache warming
+* Separate Logging: Warmup metrics logged separately from main test data
+
+#### PPL Load Test Commands
+
+```bash
+# PPL load test with high concurrency profile
+python run_ppl_load_test.py --profile high_concurrency --duration 1500 --ramp-step 5 --index "big5*"
+
+# PPL load test with conservative profile
+python run_ppl_load_test.py --profile conservative --duration 3600 --ramp-step 5 --index "big5*"
+
+# Single query group power-of-2 ramp test (sorting only, 1->2->4->8->16->32->64)
+python run_ppl_load_test.py --profile single_group_power2 --target-group sorting --duration 3600 --ramp-step 10 --index "big5*"
+
+# PPL load test with warmup phase
+python run_ppl_load_test.py --profile conservative --warmup --warmup-duration 600 --index "big5*"
+
+# Production PPL load test against AWS OpenSearch
+python run_ppl_load_test.py --host opense-clust-rslsbropig6j-9ee3cfa8c6137509.elb.us-west-2.amazonaws.com --port 443 --ssl --username admin --password CalciteLoadTest@123 --duration 3600 --ramp-step 5 --profile high_concurrency --index "custom-big5*"
+```
 
 ## Framework assumes test data is already loaded in OpenSearch indices.

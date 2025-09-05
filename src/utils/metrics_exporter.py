@@ -13,6 +13,8 @@ class MetricsExporter:
         self.metrics_index = f"benchmark-metrics-{time.strftime('%Y-%m')}-{execution_id}"
         self.query_metrics_index = f"query-metrics-{time.strftime('%Y-%m')}-{execution_id}"
         self.metrics_log_file = f"logs/{execution_id}_METRICS.log"
+        self.warmup_metrics_log_file = f"logs/{execution_id}_WARMUP_METRICS.log"
+        self.is_warmup_phase = False
         self.pending_metrics = []  # Buffer for bulk upload
         self.last_bulk_upload = time.time()
         os.makedirs("logs", exist_ok=True)
@@ -69,6 +71,11 @@ class MetricsExporter:
             }
             self.metrics_client.indices.create(index=self.query_metrics_index, body=mapping)
     
+    def set_warmup_phase(self, is_warmup: bool):
+        """Set whether we're in warmup phase"""
+        self.is_warmup_phase = is_warmup
+        print(f"MetricsExporter: Warmup phase set to {is_warmup}")
+    
     def export_node_stats(self, environment: str = "loadtest") -> bool:
         """Export node stats to metrics index - data nodes only with CPU and JVM memory"""
         try:
@@ -100,8 +107,8 @@ class MetricsExporter:
                     "node_type": "data"
                 })
                 
-                # Always log to file first
-                self._log_to_file(doc)
+                # Log to appropriate file based on phase
+                self._log_to_file(doc, is_warmup=self.is_warmup_phase)
                 
                 # Add to bulk buffer
                 self.pending_metrics.append({"index": {"_index": self.metrics_index}})
@@ -212,11 +219,14 @@ class MetricsExporter:
         
         return {k: v for k, v in metrics.items() if v is not None}
     
-    def _log_to_file(self, doc: Dict[str, Any]):
-        """Log metrics document to file"""
+    def _log_to_file(self, doc: Dict[str, Any], is_warmup: bool = False):
+        """Log metrics document to appropriate file"""
         try:
-            with open(self.metrics_log_file, 'a') as f:
+            log_file = self.warmup_metrics_log_file if is_warmup else self.metrics_log_file
+            with open(log_file, 'a') as f:
                 f.write(json.dumps(doc) + '\n')
+            if is_warmup:
+                print(f"Logged warmup metrics to {log_file}")
         except Exception as e:
             print(f"Failed to log metrics to file: {e}")
     
@@ -243,7 +253,7 @@ class MetricsExporter:
             print("Flushing pending metrics...")
             self._bulk_upload_metrics()
     
-    def export_query_metrics(self, query_name: str, query_latency: float) -> bool:
+    def export_query_metrics(self, query_name: str, query_latency: float, is_warmup: bool = False) -> bool:
         """Export query metrics to query metrics index - latency in milliseconds"""
         try:
             timestamp = int(time.time() * 1000)
@@ -256,8 +266,12 @@ class MetricsExporter:
                 "total_max_concurrency": self.observability_monitor.get_max_concurrency() if self.observability_monitor else 0
             }
             
-            # Always log to file first (create separate log for query metrics)
-            query_log_file = f"logs/{self.execution_id}_QUERY_METRICS.log"
+            # Log to separate files for warmup vs actual test
+            if is_warmup:
+                query_log_file = f"logs/{self.execution_id}_WARMUP_QUERY_METRICS.log"
+            else:
+                query_log_file = f"logs/{self.execution_id}_QUERY_METRICS.log"
+            
             try:
                 with open(query_log_file, 'a') as f:
                     f.write(json.dumps(doc) + '\n')

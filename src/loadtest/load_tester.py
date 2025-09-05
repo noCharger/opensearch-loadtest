@@ -43,6 +43,8 @@ class LoadTester:
         
         print("LoadTester.__init__: Creating metrics exporter...")
         self.metrics_exporter = MetricsExporter(self.client, metrics_client, self.execution_id, self.monitor)
+        # Initialize as non-warmup phase
+        self.metrics_exporter.set_warmup_phase(False)
         
         print("LoadTester.__init__: Setting up signal handlers...")
         # Setup signal handlers for graceful shutdown
@@ -207,7 +209,7 @@ class LoadTester:
         self.wal_logger.log(query_config.name, "WORKER_START")
         
         if query_config.load_mode == LoadMode.CONCURRENCY:
-            self._concurrency_worker(query_config)
+            self._concurrency_worker(query_config, worker_id)
         else:
             self._qps_worker(query_config, total_workers)
         
@@ -242,14 +244,13 @@ class LoadTester:
             # Execute query regardless of CPU (no pausing)
             self._execute_query_async(query_config)
     
-    def _concurrency_worker(self, query_config: QueryConfig):
+    def _concurrency_worker(self, query_config: QueryConfig, worker_id: int):
         """Concurrency-based worker - each worker maintains 1 concurrent request"""
         while not self._stop_event.is_set():
             target_concurrency = self._get_current_concurrency(query_config)
             
-            # Each worker represents 1 concurrent request
-            # Only execute if this worker should be active based on current target
-            worker_should_be_active = target_concurrency > 0
+            # Only execute if this worker ID is within the current target concurrency
+            worker_should_be_active = worker_id < target_concurrency
             
             if worker_should_be_active:
                 self._execute_query_async(query_config)
@@ -270,7 +271,7 @@ class LoadTester:
             self.metrics.record(duration_ms, True, query_config.name)
             self.monitor.record_request(query_config.name, True)
             self.wal_logger.log(query_config.name, "SUCCESS", duration_ms)
-            self.metrics_exporter.export_query_metrics(query_config.name, duration_ms)
+            self.metrics_exporter.export_query_metrics(query_config.name, duration_ms, is_warmup=False)
             print(f"[SUCCESS] {query_config.name} completed in {duration_ms:.1f}ms")
         except Exception as e:
             duration_ms = (time.time() - start_time) * 1000
@@ -279,7 +280,7 @@ class LoadTester:
                 self.metrics.record(duration_ms, False, query_config.name, str(e))
                 self.monitor.record_request(query_config.name, False)
                 self.wal_logger.log(query_config.name, "ERROR", duration_ms, str(e))
-                self.metrics_exporter.export_query_metrics(query_config.name, duration_ms)
+                self.metrics_exporter.export_query_metrics(query_config.name, duration_ms, is_warmup=False)
                 print(f"[ERROR] {query_config.name} failed in {duration_ms:.1f}ms: {str(e)[:100]}")
         finally:
             self.monitor.end_request(query_config.name, query_config.query_group)
@@ -355,6 +356,9 @@ class LoadTester:
         """Run warmup phase with same concurrency for all queries"""
         print(f"\n=== Starting Warmup Phase ({self.config.warmup_duration_seconds}s) ===")
         self.wal_logger.log("EXECUTION", "WARMUP_START")
+        self.metrics_exporter.set_warmup_phase(True)
+        # Export initial warmup metrics
+        self.metrics_exporter.export_node_stats()
         
         # Create warmup queries with same concurrency for all
         warmup_queries = []
@@ -376,12 +380,21 @@ class LoadTester:
             future = executor.submit(self._warmup_worker, warmup_query)
             warmup_futures.append(future)
         
-        # Wait for warmup duration
+        # Wait for warmup duration with metrics collection
         warmup_start = time.time()
+        last_metrics_time = warmup_start
+        
         while time.time() - warmup_start < self.config.warmup_duration_seconds:
             if self._stop_event.is_set():
                 break
-            time.sleep(1)
+            
+            current_time = time.time()
+            # Export node stats every 0.5 seconds during warmup
+            if current_time - last_metrics_time >= 0.5:
+                self.metrics_exporter.export_node_stats()
+                last_metrics_time = current_time
+            
+            time.sleep(0.1)
         
         # Stop warmup workers
         self._warmup_stop_event = threading.Event()
@@ -396,6 +409,7 @@ class LoadTester:
         
         print("=== Warmup Phase Complete ===")
         self.wal_logger.log("EXECUTION", "WARMUP_END")
+        self.metrics_exporter.set_warmup_phase(False)
         
         # Reset test start time for main phase
         self.test_start_time = time.time()
@@ -414,10 +428,12 @@ class LoadTester:
                 duration_ms = (time.time() - start_time) * 1000
                 # Don't record warmup metrics in main metrics collector
                 self.wal_logger.log(query_config.name, "WARMUP_SUCCESS", duration_ms)
+                self.metrics_exporter.export_query_metrics(query_config.name, duration_ms, is_warmup=True)
             except Exception as e:
                 duration_ms = (time.time() - start_time) * 1000
                 if not self._stop_event.is_set():
                     self.wal_logger.log(query_config.name, "WARMUP_ERROR", duration_ms, str(e))
+                    self.metrics_exporter.export_query_metrics(query_config.name, duration_ms, is_warmup=True)
             finally:
                 self.monitor.end_request(query_config.name, query_config.query_group)
     
@@ -502,6 +518,12 @@ class LoadTester:
             
             print("\n=== Target Concurrency Timeline ===")
             
+            # Add single group test indicator
+            if self._is_single_group_test():
+                target_group = self._get_target_group_for_single_test()
+                if target_group:
+                    print(f"Single Group Exponential Test: {target_group.value} (others set to 0)")
+            
             # Get unique groups
             from ..utils.query_groups import QueryGroup
             groups = list(set(q.query_group for q in concurrency_queries if q.query_group))
@@ -514,17 +536,27 @@ class LoadTester:
             
             print("-" * (12 + 12 * len(groups) + 8))
             
+            # Check if this is a single group exponential test
+            is_single_group = self._is_single_group_test()
+            target_group = self._get_target_group_for_single_test() if is_single_group else None
+            
             for t in change_points:
                 total_concurrency = 0
                 time_label = f"{t}s start" if t == 0 else f"{t}s"
                 print(f"{time_label:<12}", end="")
                 
                 for group in groups:
-                    group_concurrency = sum(
-                        self._get_concurrency_at_time(q, t) 
-                        for q in concurrency_queries if q.query_group == group
-                    )
-                    total_concurrency += group_concurrency
+                    if is_single_group and group != target_group:
+                        # For single group tests, show 0 for non-target groups
+                        group_concurrency = 0
+                    else:
+                        group_concurrency = sum(
+                            self._get_concurrency_at_time(q, t) 
+                            for q in concurrency_queries if q.query_group == group
+                        )
+                    # Only count target group concurrency for single group tests
+                    if not is_single_group or group == target_group:
+                        total_concurrency += group_concurrency
                     print(f"{group_concurrency:>11}", end="")
                 
                 print(f"{total_concurrency:>7}")
@@ -568,3 +600,41 @@ class LoadTester:
             cumulative_time += ramp.duration_seconds
         
         return query_config.target_concurrency[-1].concurrency
+    
+    def _is_single_group_test(self) -> bool:
+        """Check if this is a single group exponential test"""
+        concurrency_queries = [q for q in self.config.queries if q.load_mode == LoadMode.CONCURRENCY]
+        if not concurrency_queries:
+            return False
+        
+        # Check if only one group has exponential ramp (>1 step) while others have minimal load
+        groups_with_ramp = set()
+        groups_with_minimal = set()
+        
+        for query in concurrency_queries:
+            if query.query_group:
+                if isinstance(query.target_concurrency, list) and len(query.target_concurrency) > 1:
+                    # Check if it's exponential (end > start significantly)
+                    start_conc = query.target_concurrency[0].concurrency
+                    end_conc = query.target_concurrency[-1].concurrency
+                    if end_conc > start_conc * 2:  # Exponential growth indicator
+                        groups_with_ramp.add(query.query_group)
+                elif isinstance(query.target_concurrency, list) and len(query.target_concurrency) == 1:
+                    # Single step with minimal concurrency
+                    if query.target_concurrency[0].concurrency == 1:
+                        groups_with_minimal.add(query.query_group)
+        
+        # Single group test: exactly one group with exponential ramp, others minimal
+        return len(groups_with_ramp) == 1 and len(groups_with_minimal) >= 1
+    
+    def _get_target_group_for_single_test(self):
+        """Get the target group for single group exponential test"""
+        concurrency_queries = [q for q in self.config.queries if q.load_mode == LoadMode.CONCURRENCY]
+        
+        for query in concurrency_queries:
+            if query.query_group and isinstance(query.target_concurrency, list) and len(query.target_concurrency) > 1:
+                start_conc = query.target_concurrency[0].concurrency
+                end_conc = query.target_concurrency[-1].concurrency
+                if end_conc > start_conc * 2:  # Exponential growth
+                    return query.query_group
+        return None

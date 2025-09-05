@@ -8,11 +8,8 @@ import time
 import argparse
 
 def load_logs(execution_id):
-    """Load query metrics from QUERY_METRICS.log file, excluding warmup phase"""
+    """Load query metrics from QUERY_METRICS.log file (actual test only)"""
     query_metrics_file = f"logs/{execution_id}_QUERY_METRICS.log"
-    
-    # Get warmup phase boundaries from execution log
-    warmup_start, warmup_end = get_warmup_boundaries(execution_id)
     
     query_metrics = []
     query_metrics_raw = []  # Keep raw data for concurrency lookup
@@ -29,17 +26,9 @@ def load_logs(execution_id):
                 try:
                     entry = json.loads(line.strip())
                     
-                    # Skip warmup query names
+                    # Only process actual test queries (warmup is in separate file)
                     query_name = entry.get('query_name', '')
-                    if query_name.startswith('warmup_'):
-                        warmup_skipped += 1
-                        continue
-                    
-                    # Skip events during warmup phase
                     timestamp = entry.get('@timestamp', 0) / 1000  # Convert from milliseconds
-                    if warmup_start and warmup_end and warmup_start <= timestamp <= warmup_end:
-                        phase_skipped += 1
-                        continue
                     
 
                     # Only include queries with latency data
@@ -54,17 +43,16 @@ def load_logs(execution_id):
                 except json.JSONDecodeError:
                     continue
         
-        print(f"Debug: Total lines: {total_lines}, Warmup skipped: {warmup_skipped}, Phase skipped: {phase_skipped}, Success found: {success_found}")
-        print(f"Debug: Warmup boundaries: {warmup_start} to {warmup_end}")
+        print(f"Debug: Total lines: {total_lines}, Success found: {success_found} (warmup data in separate file)")
     except FileNotFoundError:
         print(f"Warning: {query_metrics_file} not found, falling back to individual log files")
         # Fallback to old method if QUERY_METRICS.log doesn't exist
-        return load_logs_fallback(execution_id, warmup_start, warmup_end), []
+        return load_logs_fallback(execution_id), []
     
     return query_metrics, query_metrics_raw
 
 def load_benchmark_metrics(execution_id):
-    """Load benchmark metrics from METRICS.log file, excluding warmup data"""
+    """Load benchmark metrics from METRICS.log file (actual test only)"""
     metrics_file = f"logs/{execution_id}_METRICS.log"
     benchmark_metrics = []
     
@@ -73,7 +61,7 @@ def load_benchmark_metrics(execution_id):
             for line in f:
                 try:
                     entry = json.loads(line.strip())
-                    # Only include metrics when cluster is warmed up (max_concurrency > 0)
+                    # Only include metrics with non-zero max_concurrency (active test phase)
                     if entry.get('max_concurrency', 0) > 0:
                         benchmark_metrics.append(entry)
                 except json.JSONDecodeError:
@@ -186,7 +174,7 @@ def analyze_query_latency_by_type(query_metrics):
     
     return type_summary
 
-def load_logs_fallback(execution_id, warmup_start, warmup_end):
+def load_logs_fallback(execution_id):
     """Fallback method to load from individual query log files"""
     log_pattern = f"logs/{execution_id}_*.log"
     log_files = glob.glob(log_pattern)

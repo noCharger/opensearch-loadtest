@@ -46,3 +46,19 @@ class RampBuilder:
             ramps.append(ConcurrencyRamp(concurrency=concurrency, duration_seconds=step_duration))
         
         return ramps
+    
+    @staticmethod
+    def power_of_2_concurrency_ramp(steps: int, step_duration: int) -> List[ConcurrencyRamp]:
+        """Build power of 2 then linear ramp: 1->2->4->8->16->32->64->100->150->200..."""
+        if steps <= 1:
+            return [ConcurrencyRamp(concurrency=1, duration_seconds=step_duration)]
+        
+        ramps = []
+        for i in range(steps):
+            if i < 7:  # First 7 steps: power of 2 (1, 2, 4, 8, 16, 32, 64)
+                concurrency = 2 ** i
+            else:  # After step 7: linear increments of 50 starting from 100
+                concurrency = 100 + (i - 7) * 50  # 100, 150, 200, 250...
+            ramps.append(ConcurrencyRamp(concurrency=concurrency, duration_seconds=step_duration))
+        
+        return ramps
