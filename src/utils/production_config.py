@@ -364,10 +364,16 @@ class ProductionLoadConfig:
         step_duration = ramp_step_minutes * 60
         steps = duration_seconds // step_duration  # Use all available steps
         
+        # Use conservative ramp for date histogram and keyword terms queries
+        if target_query in ['date_histogram_hourly_agg', 'keyword_terms']:
+            ramp_function = RampBuilder.conservative_concurrency_ramp
+        else:
+            ramp_function = RampBuilder.power_of_2_concurrency_ramp
+        
         return {
             target_query: {
                 "load_mode": LoadMode.CONCURRENCY,
-                "target_concurrency": RampBuilder.power_of_2_concurrency_ramp(
+                "target_concurrency": ramp_function(
                     steps=steps, step_duration=step_duration
                 )
             }

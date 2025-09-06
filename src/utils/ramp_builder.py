@@ -62,3 +62,19 @@ class RampBuilder:
             ramps.append(ConcurrencyRamp(concurrency=concurrency, duration_seconds=step_duration))
         
         return ramps
+    
+    @staticmethod
+    def conservative_concurrency_ramp(steps: int, step_duration: int) -> List[ConcurrencyRamp]:
+        """Build conservative ramp: 1->2->4->6->8->10->12->14->16->18->20..."""
+        if steps <= 1:
+            return [ConcurrencyRamp(concurrency=1, duration_seconds=step_duration)]
+        
+        ramps = []
+        for i in range(steps):
+            if i < 3:  # First 3 steps: 1, 2, 4
+                concurrency = 2 ** i if i < 2 else 4
+            else:  # After step 3: linear increments of 2 starting from 6
+                concurrency = 6 + (i - 3) * 2  # 6, 8, 10, 12, 14, 16, 18, 20...
+            ramps.append(ConcurrencyRamp(concurrency=concurrency, duration_seconds=step_duration))
+        
+        return ramps

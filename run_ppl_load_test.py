@@ -61,8 +61,8 @@ def main():
     args = parser.parse_args()
     print(f"Arguments parsed: host={args.host}, port={args.port}, index={args.index}")
     
-    # Load specific PPL queries
-    ppl_query_names = ["composite_terms", "desc_sort_timestamp", "range", "default", "term"]
+    # Load specific PPL queries (expanded list for target query testing)
+    ppl_query_names = ["composite_terms", "desc_sort_timestamp", "range", "default", "term", "date_histogram_hourly_agg", "keyword_terms"]
     print(f"Loading specific PPL queries: {ppl_query_names}")
     queries = QueryLoader.load_specific_queries(ppl_query_names, "queries", args.index)
     print(f"Loaded {len(queries)} PPL queries")

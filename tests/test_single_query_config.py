@@ -83,6 +83,60 @@ class TestSingleQueryConfig(unittest.TestCase):
         for step in ramp:
             self.assertEqual(step.duration_seconds, 600)
     
+    def test_conservative_ramp_for_special_queries(self):
+        """Test that date_histogram and keyword_terms queries use conservative ramp"""
+        duration = 7200  # 2 hours
+        ramp_step = 10   # 10 minutes
+        
+        # Test date_histogram_hourly_agg
+        config_dict = ProductionLoadConfig.get_single_query_power2_ramp_config(
+            "date_histogram_hourly_agg", ramp_step, duration
+        )
+        
+        query_config = config_dict["date_histogram_hourly_agg"]
+        ramp = query_config["target_concurrency"]
+        
+        # Verify conservative ramp pattern: 1, 2, 4, 6, 8, 10, 12...
+        expected_pattern = [1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]
+        for i, step in enumerate(ramp[:12]):
+            self.assertEqual(step.concurrency, expected_pattern[i], 
+                           f"Step {i+1}: expected {expected_pattern[i]}, got {step.concurrency}")
+        
+        # Test keyword_terms
+        config_dict = ProductionLoadConfig.get_single_query_power2_ramp_config(
+            "keyword_terms", ramp_step, duration
+        )
+        
+        query_config = config_dict["keyword_terms"]
+        ramp = query_config["target_concurrency"]
+        
+        # Should follow same conservative pattern
+        for i, step in enumerate(ramp[:12]):
+            self.assertEqual(step.concurrency, expected_pattern[i], 
+                           f"Step {i+1}: expected {expected_pattern[i]}, got {step.concurrency}")
+    
+    def test_power2_ramp_for_regular_queries(self):
+        """Test that regular queries still use power-of-2 ramp"""
+        duration = 7200  # 2 hours
+        ramp_step = 10   # 10 minutes
+        
+        regular_queries = ["range", "default", "term", "composite_terms", "desc_sort_timestamp"]
+        
+        for query_name in regular_queries:
+            with self.subTest(query_name=query_name):
+                config_dict = ProductionLoadConfig.get_single_query_power2_ramp_config(
+                    query_name, ramp_step, duration
+                )
+                
+                query_config = config_dict[query_name]
+                ramp = query_config["target_concurrency"]
+                
+                # Verify power-of-2 pattern: 1, 2, 4, 8, 16, 32, 64...
+                expected_power2 = [1, 2, 4, 8, 16, 32, 64]
+                for i, step in enumerate(ramp[:7]):
+                    self.assertEqual(step.concurrency, expected_power2[i], 
+                                   f"Query {query_name} Step {i+1}: expected {expected_power2[i]}, got {step.concurrency}")
+    
     def test_single_query_isolation(self):
         """Test that only target query runs, others have minimal load"""
         target_query = "composite_terms"
@@ -157,14 +211,16 @@ class TestSingleQueryConfig(unittest.TestCase):
     
     def test_query_group_mapping_for_target_queries(self):
         """Test that all target queries have proper group mappings"""
-        target_queries = ['composite_terms', 'desc_sort_timestamp', 'range', 'default', 'term']
+        target_queries = ['composite_terms', 'desc_sort_timestamp', 'range', 'default', 'term', 'date_histogram_hourly_agg', 'keyword_terms']
         
         expected_groups = {
             'composite_terms': QueryGroup.TERMS_AGGREGATION,
             'desc_sort_timestamp': QueryGroup.SORTING,
             'range': QueryGroup.RANGE_QUERIES,
             'default': QueryGroup.TEXT_QUERYING,
-            'term': QueryGroup.TEXT_QUERYING
+            'term': QueryGroup.TEXT_QUERYING,
+            'date_histogram_hourly_agg': QueryGroup.DATE_HISTOGRAM,
+            'keyword_terms': QueryGroup.TERMS_AGGREGATION
         }
         
         for query_name, expected_group in expected_groups.items():
