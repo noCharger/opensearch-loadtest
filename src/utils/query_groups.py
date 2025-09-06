@@ -16,14 +16,20 @@ class QueryGroupMapper:
         "default": QueryGroup.TEXT_QUERYING,
         "term": QueryGroup.TEXT_QUERYING,
         "keyword_in_range": QueryGroup.TEXT_QUERYING,
+        "keyword-in-range": QueryGroup.TEXT_QUERYING,  # DSL
         "query_string_on_message": QueryGroup.TEXT_QUERYING,
+        "query-string-on-message": QueryGroup.TEXT_QUERYING,  # DSL
         "query_string_on_message_filtered": QueryGroup.TEXT_QUERYING,
+        "query-string-on-message-filtered": QueryGroup.TEXT_QUERYING,  # DSL
         "query_string_on_message_filtered_sorted_num": QueryGroup.TEXT_QUERYING,
+        "query-string-on-message-filtered-sorted-num": QueryGroup.TEXT_QUERYING,  # DSL
         "scroll": QueryGroup.TEXT_QUERYING,
+        "match-all": QueryGroup.TEXT_QUERYING,  # DSL
         
         # Sorting
         "desc_sort_timestamp": QueryGroup.SORTING,
         "desc_sort_with_after_timestamp": QueryGroup.SORTING,
+        "desc_sort_with_after_timestamp": QueryGroup.SORTING,  # DSL
         "asc_sort_timestamp": QueryGroup.SORTING,
         "asc_sort_with_after_timestamp": QueryGroup.SORTING,
         "desc_sort_timestamp_can_match_shortcut": QueryGroup.SORTING,
@@ -43,12 +49,16 @@ class QueryGroupMapper:
         "date_histogram_hourly_agg": QueryGroup.DATE_HISTOGRAM,
         "date_histogram_minute_agg": QueryGroup.DATE_HISTOGRAM,
         "composite_date_histogram_daily": QueryGroup.DATE_HISTOGRAM,
+        "composite-date_histogram-daily": QueryGroup.DATE_HISTOGRAM,  # DSL
         "range_auto_date_histo": QueryGroup.DATE_HISTOGRAM,
+        "range-auto-date-histo": QueryGroup.DATE_HISTOGRAM,  # DSL
         "range_auto_date_histo_with_metrics": QueryGroup.DATE_HISTOGRAM,
+        "range-auto-date-histo-with-metrics": QueryGroup.DATE_HISTOGRAM,  # DSL
         
         # Range Queries
         "range": QueryGroup.RANGE_QUERIES,
         "range_numeric": QueryGroup.RANGE_QUERIES,
+        "range-numeric": QueryGroup.RANGE_QUERIES,  # DSL
         "range_field_conjunction_big_range_big_term_query": QueryGroup.RANGE_QUERIES,
         "range_field_disjunction_big_range_small_term_query": QueryGroup.RANGE_QUERIES,
         "range_field_conjunction_small_range_small_term_query": QueryGroup.RANGE_QUERIES,
@@ -56,12 +66,19 @@ class QueryGroupMapper:
         
         # Terms Aggregation
         "terms_significant_1": QueryGroup.TERMS_AGGREGATION,
+        "terms-significant-1": QueryGroup.TERMS_AGGREGATION,  # DSL
         "terms_significant_2": QueryGroup.TERMS_AGGREGATION,
+        "terms-significant-2": QueryGroup.TERMS_AGGREGATION,  # DSL
         "multi_terms_keyword": QueryGroup.TERMS_AGGREGATION,
+        "multi_terms-keyword": QueryGroup.TERMS_AGGREGATION,  # DSL
         "composite_terms": QueryGroup.TERMS_AGGREGATION,
+        "composite-terms": QueryGroup.TERMS_AGGREGATION,  # DSL
         "composite_terms_keyword": QueryGroup.TERMS_AGGREGATION,
+        "composite_terms-keyword": QueryGroup.TERMS_AGGREGATION,  # DSL
         "keyword_terms": QueryGroup.TERMS_AGGREGATION,
+        "keyword-terms": QueryGroup.TERMS_AGGREGATION,  # DSL
         "keyword_terms_low_cardinality": QueryGroup.TERMS_AGGREGATION,
+        "keyword-terms-low-cardinality": QueryGroup.TERMS_AGGREGATION,  # DSL
     }
     
     @classmethod

@@ -49,7 +49,7 @@ def main():
     parser.add_argument('--ramp-step', type=int, default=5, help='Ramp step duration in minutes')
     parser.add_argument('--profile', choices=['conservative', 'moderate', 'concurrent', 'high_concurrency', 'single_group_exponential', 'single_group_power2'], default='conservative')
     parser.add_argument('--target-group', choices=['terms_aggregation', 'text_querying', 'range_queries', 'sorting', 'date_histogram'], help='Target query group for single_group_exponential/single_group_power2 profile')
-    parser.add_argument('--target-query', choices=['composite_terms', 'desc_sort_timestamp', 'range', 'default', 'term'], help='Target query for single query exponential test')
+    parser.add_argument('--target-query', choices=['composite_terms', 'desc_sort_timestamp', 'range', 'default', 'term', 'date_histogram_hourly_agg', 'keyword_terms'], help='Target query for single query exponential test')
     parser.add_argument('--ssl', action='store_true', help='Use SSL connection')
     parser.add_argument('--username', help='Username for authentication')
     parser.add_argument('--password', help='Password for authentication')

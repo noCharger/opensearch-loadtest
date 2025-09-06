@@ -1,0 +1,83 @@
+DSL	DSL-1TB	DSL-10TB	DSL-50TB	DSL-100TB
+
+match-all	9.22908	24.8015	87.137	149.453
+
+desc_sort_timestamp	23.2475	43.2663	142.467	239.244
+
+asc_sort_timestamp	18.1532	42.5347	131.416	246.137
+
+desc_sort_with_after_timestamp	11.7676	39.0746	135.938	250.438
+
+asc_sort_with_after_timestamp	13.5289	42.9312	121.202	242.006
+
+desc_sort_timestamp_can_match_shortcut	17.3097	54.9273	144.048	256.149
+
+desc_sort_timestamp_no_can_match_shortcut	12.8007	47.0566	109.826	160.993
+
+asc_sort_timestamp_can_match_shortcut	12.2758	49.2653	130.876	255.458
+
+asc_sort_timestamp_no_can_match_shortcut	9.66968	39.0079	90.1535	152.649
+
+term	6.99123	28.4788	118.379	160.481
+
+multi_terms-keyword	78.3791	608.821	719.472	728.449
+
+keyword-terms	347.336	2396.02	2830.31	2842.15
+
+keyword-terms-low-cardinality	310.928	2180.75	2366.74	2459.33
+
+composite-terms	41.1644	237.846	266.608	315.274
+
+composite_terms-keyword	46.6744	330.07	344.501	407.459
+
+composite-date_histogram-daily	9.76786	40.1058	117.547	188.536
+
+range	7.3383	39.3088	114.839	227.14
+
+range-numeric	4.63363	25.389	86.1581	158.679
+
+keyword-in-range	15.0834	74.8296	165.087	272.238
+
+date_histogram_hourly_agg	89.5466	798.22	1945.16	3479.59
+
+date_histogram_minute_agg	69.347	737.301	1806.72	3163.52
+
+scroll	408.186	958.422	3206.16	5221.41
+
+query-string-on-message	18.0184	47.1054	121.265	215.75
+
+query-string-on-message-filtered	20.3914	68.5799	149.316	247.136
+
+query-string-on-message-filtered-sorted-num	14.9494	84.4356	176.949	265.075
+
+sort_keyword_can_match_shortcut	9.11362	40.5648	106.2	247.15
+
+sort_keyword_no_can_match_shortcut	7.22908	33.0685	82.5762	152.028
+
+sort_numeric_desc	10.1923	39.724	126.944	242.753
+
+sort_numeric_asc	8.8713	38.4898	113.323	243.477
+
+sort_numeric_desc_with_match	10.059	38.3874	113.266	225.25
+
+sort_numeric_asc_with_match	9.74083	41.5349	118.137	222.897
+
+range_field_conjunction_big_range_big_term_query	4.65065	29.9499	86.6827	170.575
+
+range_field_disjunction_big_range_small_term_query	7.62344	36.7462	111.483	245.231
+
+range_field_conjunction_small_range_small_term_query	7.46935	35.5507	109.931	226.67
+
+range_field_conjunction_small_range_big_term_query	4.4608	28.1553	79.4464	167.124
+
+range-auto-date-histo	3165.46	28146	28798.3	33583.9
+
+range-auto-date-histo-with-metrics	9721.62	90114.8	88784.7	91328
+
+range-agg-1	5.80283	22.8421	43.4817	76.4761
+
+range-agg-2	4.64376	26.6089	41.9745	85.6794
+
+cardinality-agg-low	15.5575	59.4705	85.7169	115.357
+
+cardinality-agg-high	31451.6	280853	297950	293599

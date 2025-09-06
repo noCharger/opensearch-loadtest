@@ -266,17 +266,16 @@ class ProductionLoadConfig:
     
     @staticmethod
     def apply_single_group_config_to_queries(queries, config_dict, target_group: QueryGroup):
-        """Apply single group exponential config, others get minimal load"""
+        """Apply single group exponential config, others get zero load"""
         for query in queries:
             if query.query_group == target_group and target_group in config_dict:
                 group_config = config_dict[target_group]
                 query.load_mode = group_config["load_mode"]
                 query.target_concurrency = group_config["target_concurrency"]
-            elif query.query_group in config_dict:
-                # Other groups get their minimal config
-                group_config = config_dict[query.query_group]
-                query.load_mode = group_config["load_mode"]
-                query.target_concurrency = group_config["target_concurrency"]
+            else:
+                # Other groups get zero load (excluded from test)
+                query.load_mode = LoadMode.CONCURRENCY
+                query.target_concurrency = [ConcurrencyRamp(concurrency=0, duration_seconds=1)]
     
     @staticmethod
     def apply_ppl_config_to_queries(queries, config_dict):
@@ -294,18 +293,7 @@ class ProductionLoadConfig:
                 query.load_mode = LoadMode.CONCURRENCY
                 query.target_concurrency = [ConcurrencyRamp(concurrency=1, duration_seconds=600)]
     
-    @staticmethod
-    def apply_single_query_config_to_queries(queries, config_dict, target_query: str, duration_seconds: int):
-        """Apply single query exponential config, others get minimal load"""
-        for query in queries:
-            if query.name == target_query and target_query in config_dict:
-                query_config = config_dict[target_query]
-                query.load_mode = query_config["load_mode"]
-                query.target_concurrency = query_config["target_concurrency"]
-            else:
-                # All other queries get minimal load
-                query.load_mode = LoadMode.CONCURRENCY
-                query.target_concurrency = [ConcurrencyRamp(concurrency=1, duration_seconds=duration_seconds)]
+
     
     @staticmethod
     def get_single_group_exponential_config(target_group: QueryGroup, ramp_step_minutes: int = 10, duration_seconds: int = 3600) -> Dict[QueryGroup, dict]:
@@ -324,10 +312,10 @@ class ProductionLoadConfig:
                     )
                 }
             else:
-                # Other groups stay at minimal load
+                # Other groups get zero load (excluded from test)
                 config[group] = {
                     "load_mode": LoadMode.CONCURRENCY,
-                    "target_concurrency": [ConcurrencyRamp(concurrency=1, duration_seconds=duration_seconds)]
+                    "target_concurrency": [ConcurrencyRamp(concurrency=0, duration_seconds=1)]
                 }
         return config
     
@@ -363,10 +351,10 @@ class ProductionLoadConfig:
                     )
                 }
             else:
-                # Other groups stay at minimal load
+                # Other groups get zero load (excluded from test)
                 config[group] = {
                     "load_mode": LoadMode.CONCURRENCY,
-                    "target_concurrency": [ConcurrencyRamp(concurrency=1, duration_seconds=duration_seconds)]
+                    "target_concurrency": [ConcurrencyRamp(concurrency=0, duration_seconds=1)]
                 }
         return config
     
@@ -384,6 +372,19 @@ class ProductionLoadConfig:
                 )
             }
         }
+    
+    @staticmethod
+    def apply_single_query_config_to_queries(queries, config_dict, target_query: str, duration_seconds: int):
+        """Apply single query config, others get zero load"""
+        for query in queries:
+            if query.name == target_query and target_query in config_dict:
+                query_config = config_dict[target_query]
+                query.load_mode = query_config["load_mode"]
+                query.target_concurrency = query_config["target_concurrency"]
+            else:
+                # All other queries get zero load (excluded from test)
+                query.load_mode = LoadMode.CONCURRENCY
+                query.target_concurrency = [ConcurrencyRamp(concurrency=0, duration_seconds=1)]
     
     @staticmethod
     def apply_dsl_config_to_queries(queries, config_dict):

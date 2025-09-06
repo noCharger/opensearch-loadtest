@@ -33,13 +33,13 @@ class TestSingleGroupConfig(unittest.TestCase):
         self.assertEqual(target_ramp[0].concurrency, 1)  # Start at 1
         self.assertEqual(target_ramp[-1].concurrency, 64)  # End at 64
         
-        # Verify other groups get minimal load
+        # Verify other groups get zero load (excluded)
         for group, group_config in config_dict.items():
             if group != target_group:
                 other_ramp = group_config["target_concurrency"]
                 self.assertEqual(len(other_ramp), 1)  # Single step
-                self.assertEqual(other_ramp[0].concurrency, 1)  # Minimal concurrency
-                self.assertEqual(other_ramp[0].duration_seconds, duration)  # Full duration
+                self.assertEqual(other_ramp[0].concurrency, 0)  # Zero concurrency
+                self.assertEqual(other_ramp[0].duration_seconds, 1)  # Minimal duration
     
     def test_single_group_timeline_verification(self):
         """Test timeline shows 0 for non-target groups"""
@@ -90,9 +90,9 @@ class TestSingleGroupConfig(unittest.TestCase):
                 self.assertEqual(query.target_concurrency[0].concurrency, 1)
                 self.assertEqual(query.target_concurrency[-1].concurrency, 64)
             else:
-                # Other groups should have minimal load
+                # Other groups should have zero load (excluded)
                 self.assertEqual(len(query.target_concurrency), 1)
-                self.assertEqual(query.target_concurrency[0].concurrency, 1)
+                self.assertEqual(query.target_concurrency[0].concurrency, 0)
     
     def test_single_query_exponential_config(self):
         """Test single query exponential configuration"""
@@ -164,7 +164,7 @@ class TestSingleGroupConfig(unittest.TestCase):
                 self.assertEqual(query.target_concurrency[0].concurrency, 1)
                 self.assertEqual(query.target_concurrency[-1].concurrency, 64)
             else:
-                # Other queries should have minimal load
+                # Other queries should have minimal load (single query test keeps others at 1)
                 self.assertEqual(len(query.target_concurrency), 1)
                 self.assertEqual(query.target_concurrency[0].concurrency, 1)
                 self.assertEqual(query.target_concurrency[0].duration_seconds, duration)
@@ -207,6 +207,59 @@ class TestSingleGroupConfig(unittest.TestCase):
             # Should be increasing over time
             self.assertGreaterEqual(found_concurrency, 1)
             self.assertLessEqual(found_concurrency, 64)
+    
+    def test_all_query_groups_single_group_config(self):
+        """Test single group config for each query group"""
+        duration = 3600
+        ramp_step = 10
+        
+        for target_group in QueryGroup:
+            with self.subTest(target_group=target_group):
+                config_dict = ProductionLoadConfig.get_single_group_exponential_config(
+                    target_group, ramp_step, duration
+                )
+                
+                # Target group gets exponential ramp
+                target_config = config_dict[target_group]
+                self.assertEqual(target_config["load_mode"], LoadMode.CONCURRENCY)
+                target_ramp = target_config["target_concurrency"]
+                self.assertGreater(len(target_ramp), 1)
+                self.assertEqual(target_ramp[0].concurrency, 1)
+                self.assertEqual(target_ramp[-1].concurrency, 64)
+                
+                # All other groups get zero load
+                for group, group_config in config_dict.items():
+                    if group != target_group:
+                        other_ramp = group_config["target_concurrency"]
+                        self.assertEqual(len(other_ramp), 1)
+                        self.assertEqual(other_ramp[0].concurrency, 0)
+                        self.assertEqual(other_ramp[0].duration_seconds, 1)
+    
+    def test_all_query_groups_power2_config(self):
+        """Test power-of-2 config for each query group"""
+        duration = 3600
+        ramp_step = 10
+        
+        for target_group in QueryGroup:
+            with self.subTest(target_group=target_group):
+                config_dict = ProductionLoadConfig.get_single_group_power2_ramp_config(
+                    target_group, ramp_step, duration
+                )
+                
+                # Target group gets power-of-2 ramp
+                target_config = config_dict[target_group]
+                self.assertEqual(target_config["load_mode"], LoadMode.CONCURRENCY)
+                target_ramp = target_config["target_concurrency"]
+                self.assertGreater(len(target_ramp), 1)
+                self.assertEqual(target_ramp[0].concurrency, 1)
+                
+                # All other groups get zero load
+                for group, group_config in config_dict.items():
+                    if group != target_group:
+                        other_ramp = group_config["target_concurrency"]
+                        self.assertEqual(len(other_ramp), 1)
+                        self.assertEqual(other_ramp[0].concurrency, 0)
+                        self.assertEqual(other_ramp[0].duration_seconds, 1)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,83 @@
+PPL	PPL-1TB	PPL-10TB	PPL-50TB	PPL-100TB
+
+ppl-default	24.8228	39.9196	153.353	136.721
+
+ppl-term	25.1752	47.5166	162.698	146.568
+
+ppl-range	50.2271	85.8094	233.943	222.495
+
+ppl-asc-sort-timestamp-can-match-shortcut	50.0239	76.6914	217.359	237.818
+
+ppl-asc-sort-timestamp-no-can-match-shortcut	47.0557	74.7909	203.242	205.404
+
+ppl-asc-sort-timestamp	26.1228	63.3952	190.564	195.023
+
+ppl-asc-sort-with-after-timestamp	18.5151	60.8635	195.244	214.332
+
+ppl-composite-date-histogram-daily	612.534	6208.73	6886.04	6953.85
+
+ppl-composite-terms-keyword	141.697	1443.46	5002.3	5143.93
+
+ppl-composite-terms	102.585	814.361	1152.25	1247.02
+
+ppl-date-histogram-hourly-agg	7206.23	67896.3	78992.8	76255.6
+
+ppl-date-histogram-minute-agg	219.146	1822.84	3053.24	3073.09
+
+ppl-desc-sort-timestamp-can-match-shortcut	37.1428	86.7601	245.155	222.844
+
+ppl-desc-sort-timestamp-no-can-match-shortcut	35.6876	85.6	220.299	221.075
+
+ppl-desc-sort-timestamp	42.111	108.37	252.256	250.858
+
+ppl-desc-sort-with-after-timestamp	31.1501	106.389	246.281	265.518
+
+ppl-keyword-in-range	64.7078	110.255	259.564	256.835
+
+ppl-keyword-terms-low-cardinality	5095.98	49391	49593.4	56040
+
+ppl-keyword-terms	5141.91	49769.8	49504.5	55981.8
+
+ppl-multi-terms-keyword	75.664	501.502	796.971	973.794
+
+ppl-query-string-on-message-filtered-sorted-num	69.6353	126.244	279.741	283.648
+
+ppl-query-string-on-message-filtered	46.9962	92.0987	227.233	236.685
+
+ppl-query-string-on-message	30.828	62.4725	194.626	192.743
+
+ppl-range-auto-date-histo-with-metrics	40801.2	300078	300097	300101
+
+ppl-range-auto-date-histo	38120	300097	300072	300101
+
+ppl-range-field-conjunction-big-range-big-term-query	19.094	130.343	719.476	815.091
+
+ppl-range-field-conjunction-small-range-big-term-query	21.4802	137.78	624.135	557.979
+
+ppl-range-field-conjunction-small-range-small-term-query	31.8311	168.195	825.55	784.776
+
+ppl-range-field-disjunction-big-range-small-term-query	26.9725	181.787	678.768	689.342
+
+ppl-range-numeric	16.4405	152.438	566.228	535.459
+
+ppl-range-with-asc-sort	49.3112	1056.01	1581.68	1484.93
+
+ppl-range-with-desc-sort	198.928	8280.06	8114.1	7830.4
+
+ppl-scroll	12.9675	90.0535	367.111	369.105
+
+ppl-sort-keyword-can-match-shortcut	33.8374	190.644	603.235	691.704
+
+ppl-sort-keyword-no-can-match-shortcut	37.4348	163.985	483.167	231.811
+
+ppl-sort-numeric-asc-with-match	31.0631	166.681	198.404	209.752
+
+ppl-sort-numeric-asc	21.7312	143.184	200.339	187.792
+
+ppl-sort-numeric-desc-with-match	28.2823	162.24	194.429	194.028
+
+ppl-sort-numeric-desc	20.1512	119.866	190.075	188.458
+
+ppl-terms-significant-1	275.412	7435.98	3568.27	3580.64
+
+ppl-terms-significant-2	235.886	1986.89	2513.52	2517.53

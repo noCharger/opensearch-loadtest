@@ -22,15 +22,11 @@ class DSLQueryLoader:
         # Handle both array format and object with operations key
         operations = data if isinstance(data, list) else data.get('operations', [])
         
-        # Default selected queries for high concurrency test
-        if selected_queries is None:
-            selected_queries = ['match-all', 'desc_sort_timestamp', 'term', 'composite-terms', 'range-numeric']
-        
         for operation in operations:
             if operation.get('operation-type') == 'search':
                 query_name = operation.get('name', f"dsl_query_{len(queries)}")
                 
-                # Only load selected queries
+                # Only load selected queries if specified
                 if selected_queries and query_name not in selected_queries:
                     continue
                 
