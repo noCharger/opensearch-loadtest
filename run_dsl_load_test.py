@@ -79,8 +79,8 @@ def main():
     parser.add_argument('--port', type=int, default=9200, help='OpenSearch port')
     parser.add_argument('--duration', type=int, default=3600, help='Test duration in seconds')
     parser.add_argument('--ramp-step', type=int, default=5, help='Ramp step duration in minutes')
-    parser.add_argument('--profile', choices=['conservative', 'moderate', 'concurrent', 'high_concurrency', 'single_query_exponential'], default='conservative')
-    parser.add_argument('--target-query', choices=['match-all', 'term', 'range-numeric', 'composite-terms', 'desc_sort_timestamp'], help='Target query for single_query_exponential profile')
+    parser.add_argument('--profile', choices=['conservative', 'moderate', 'concurrent', 'high_concurrency', 'single_query_exponential', 'single_query_power2'], default='conservative')
+    parser.add_argument('--target-query', choices=['match-all', 'term', 'range', 'range-numeric', 'composite-terms', 'desc_sort_timestamp', 'date_histogram_hourly_agg', 'keyword-terms'], help='Target query for single_query_exponential/single_query_power2 profile')
     parser.add_argument('--ssl', action='store_true', help='Use SSL connection')
     parser.add_argument('--username', help='Username for authentication')
     parser.add_argument('--password', help='Password for authentication')
@@ -121,6 +121,13 @@ def main():
         else:
             print("Error: single_query_exponential profile requires --target-query")
             return
+    elif args.profile == 'single_query_power2':
+        if args.target_query:
+            config_dict = ProductionLoadConfig.get_single_query_power2_ramp_config(args.target_query, args.ramp_step, args.duration)
+            ProductionLoadConfig.apply_single_query_config_to_queries(queries, config_dict, args.target_query, args.duration)
+        else:
+            print("Error: single_query_power2 profile requires --target-query")
+            return
     else:
         if args.profile == 'conservative':
             config_dict = ProductionLoadConfig.get_conservative_ramp_config(args.ramp_step)
@@ -154,8 +161,10 @@ def main():
     print("=== DSL Load Test with Production Planning ===")
     if args.profile == 'single_query_exponential' and args.target_query:
         print(f"Single Query Exponential Test: {args.target_query} (1->64 concurrent)")
+    elif args.profile == 'single_query_power2' and args.target_query:
+        print(f"Single Query Power-of-2 Ramp Test: {args.target_query} (1->2->4->8->16->32->64)")
     profile_desc = args.profile
-    if args.profile == 'single_query_exponential' and args.target_query:
+    if args.profile in ['single_query_exponential', 'single_query_power2'] and args.target_query:
         profile_desc += f" (query: {args.target_query})"
     print(f"Testing {len(queries)} DSL queries with {profile_desc} profile")
     print("Press Ctrl+C for graceful shutdown")
